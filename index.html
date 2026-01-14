@@ -3,64 +3,93 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MedQuiz: Anatomi Reproduksi</title>
+    <title>Cerdas Cermat SMK - Battle Mode</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="quiz-container">
+
+    <div class="quiz-card">
         <div id="start-screen">
-            <h1 class="game-title">MedQuiz: Anatomi Reproduksi</h1>
-            <p>Uji pengetahuanmu tentang anatomi tubuh dan kesehatan reproduksi perempuan.</p>
-            <div class="stats-preview">
-                <span>36 Soal Medis</span> | <span>Sistem Level</span> | <span>Sertifikat</span>
-            </div>
-            <button id="start-btn" class="main-action-btn">Mulai Permainan</button>
-        </div>
-
-        <div id="game-area" class="hide">
-            <div class="top-bar">
-                <select id="level-select">
-                    <option value="0">Level: Mudah</option>
-                    <option value="1">Level: Sedang</option>
-                    <option value="2">Level: Sulit</option>
+            <h1>SMK BISA!</h1>
+            <p class="sub">Uji Kompetensi & Duel Online Real-time</p>
+            
+            <div class="box">
+                <label>Pilih Jurusan:</label>
+                <select id="jurusan-select">
+                    <option value="TKJ">TKJ (Jaringan)</option>
+                    <option value="RPL">RPL (Coding)</option>
+                    <option value="DKV">DKV (Desain)</option>
+                    <option value="TBSM">TBSM (Motor)</option>
+                    <option value="TKRO">TKRO (Mobil)</option>
+                    <option value="TPM">TPM (Mesin)</option>
+                    <option value="TITL">TITL (Listrik)</option>
                 </select>
-                <button id="mute-btn">🔊 Suara: On</button>
+                <label>Pilih Kelas:</label>
+                <select id="kelas-select">
+                    <option value="10">Kelas 10</option>
+                    <option value="11">Kelas 11</option>
+                    <option value="12">Kelas 12</option>
+                </select>
             </div>
 
-            <div class="header-info">
-                <div id="timer-display">⏱️ <span id="time-left">15</span>s</div>
-                <div id="score-display">⭐ Skor: <span id="current-score">0</span></div>
-            </div>
-
-            <div id="quiz-content">
-                <h2 id="question">Memuat soal...</h2>
-                <div id="answer-buttons" class="btn-grid"></div>
-            </div>
-        </div>
-
-        <div id="certificate-container" class="hide">
-            <div class="certificate">
-                <div class="cert-border">
-                    <h1>SERTIFIKAT KELULUSAN</h1>
-                    <p>Diberikan kepada:</p>
-                    <h2 id="player-name">Pakar Kesehatan</h2>
-                    <p>Telah menyelesaikan kuis <strong>MedQuiz: Anatomi Reproduksi</strong> dengan skor:</p>
-                    <h3 id="final-score-cert">0</h3>
-                    <div class="cert-footer">
-                        <p>Diterbitkan pada: <span id="date-cert"></span></p>
-                        <p>Oleh: <strong>AI Education System</strong></p>
+            <div class="mode-grid">
+                <div class="mode-item" onclick="startSolo()">
+                    <h3>📖 Belajar</h3>
+                    <p>Latihan + Pembahasan</p>
+                    <button class="btn" style="pointer-events:none">Mulai</button>
+                </div>
+                <div class="mode-item">
+                    <h3>⚔️ Duel Battle</h3>
+                    <input type="text" id="room-id" placeholder="Kode Room">
+                    <div class="btn-group">
+                        <button class="btn btn-duel" onclick="initBattle(true)">Buat</button>
+                        <button class="btn" onclick="initBattle(false)">Join</button>
                     </div>
                 </div>
             </div>
-            <button onclick="window.print()" class="print-btn">💾 Simpan / Cetak Sertifikat</button>
-            <button onclick="location.reload()" class="restart-btn">🔄 Main Lagi</button>
+            <p id="guide-trigger" onclick="toggleGuide()">📖 Cara Bermain</p>
+        </div>
+
+        <div id="game-area" class="hide">
+            <div id="battle-stats" class="battle-header hide">
+                <div class="p-box">Kamu: <span id="my-live-score">0</span></div>
+                <div id="battle-msg">VS</div>
+                <div class="p-box">Lawan: <span id="opp-live-score">0</span></div>
+            </div>
+
+            <div class="timer-bar" id="timer-display">5</div>
+
+            <div id="quiz-content">
+                <h3 id="question-text">Memuat soal...</h3>
+                <div id="ans-list" class="ans-container"></div>
+                <div id="feedback-box" class="feedback hide"></div>
+            </div>
+        </div>
+
+        <div id="result-screen" class="hide">
+            <h2 id="result-title">Selesai!</h2>
+            <h1 id="total-score">0</h1>
+            <p id="motivation-text"></p>
+            <button class="btn" onclick="location.reload()">Main Lagi</button>
         </div>
     </div>
 
-    <audio id="sound-correct" src="https://actions.google.com/sounds/v1/cartoon/clink_clanking.ogg"></audio>
-    <audio id="sound-wrong" src="https://actions.google.com/sounds/v1/cartoon/boing.ogg"></audio>
-    <audio id="sound-timeout" src="https://actions.google.com/sounds/v1/alarms/alarm_clock_ringing_short.ogg"></audio>
+    <div id="guide-modal" class="modal hide">
+        <div class="modal-content">
+            <h3>Panduan Bermain</h3>
+            <ul>
+                <li><b>Mode Belajar:</b> Ada pembahasan soal jika kamu salah menjawab.</li>
+                <li><b>Mode Duel:</b> Waktu hanya 5 detik! Skor kamu dan lawan akan diadu secara langsung.</li>
+                <li><b>Pemenang:</b> Ditentukan dari siapa yang mendapat skor tertinggi.</li>
+            </ul>
+            <button class="btn" onclick="toggleGuide()">Siap, Mengerti!</button>
+        </div>
+    </div>
 
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
+    
     <script src="script.js"></script>
 </body>
 </html>
