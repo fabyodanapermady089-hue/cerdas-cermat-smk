@@ -1,6 +1,6 @@
-// DATA SOAL
+// DATA SOAL LENGKAP (TKJ & RPL)
 const quizData = {
-    "tkj": {
+    "TKJ": {
         "10": [
             { q: "Alat untuk menyambung kabel UTP ke RJ-45 adalah...", a: ["Tang Crimping", "Solder", "Obeng", "Tang Potong"], c: 0 },
             { q: "Urutan kabel T568B, kabel nomor 1 adalah warna...", a: ["Putih Hijau", "Putih Oranye", "Hijau", "Oranye"], c: 1 },
@@ -38,7 +38,7 @@ const quizData = {
             { q: "Protokol penerima email adalah...", a: ["SMTP", "POP3", "HTTP", "FTP"], c: 1 }
         ]
     },
-    "rpl": {
+    "RPL": {
         "10": [
             { q: "Tag HTML untuk judul paling besar adalah...", a: ["<h6>", "<head>", "<h1>", "<title>"], c: 2 },
             { q: "Simbol flowchart untuk 'Keputusan' adalah...", a: ["Persegi", "Jajar Genjang", "Belah Ketupat", "Oval"], c: 2 },
@@ -82,14 +82,9 @@ const quizData = {
 const firebaseConfig = {
     databaseURL: "https://cerdas-cermat-smk-default-rtdb.asia-southeast1.firebasedatabase.app/"
 };
-
-// Initialize Firebase
-if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
-}
+firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
 
-// GLOBAL VARIABLES
 let currentQuestionIndex = 0;
 let score = 0;
 let selectedJurusan = "";
@@ -97,52 +92,83 @@ let selectedKelas = "";
 let roomCode = "";
 let role = "";
 
-// FUNCTION UNTUK MULAI
-function startQuiz(mode) {
-    // Ambil elemen dropdown
-    const jurusanEl = document.getElementById("jurusan");
-    const kelasEl = document.getElementById("kelas");
+// FUNGSI UNTUK MODE BELAJAR (SOLO)
+function startSolo() {
+    selectedJurusan = document.getElementById("jurusan-select").value;
+    selectedKelas = document.getElementById("kelas-select").value;
 
-    if (!jurusanEl || !kelasEl) {
-        alert("Error: Elemen HTML tidak ditemukan!");
-        return;
-    }
+    document.getElementById("start-screen").classList.add("hide");
+    document.getElementById("game-area").classList.remove("hide");
+    loadQuestion();
+}
 
-    selectedJurusan = jurusanEl.value.toLowerCase();
-    selectedKelas = kelasEl.value;
+// FUNGSI UNTUK MODE BATTLE
+function initBattle(isOwner) {
+    selectedJurusan = document.getElementById("jurusan-select").value;
+    selectedKelas = document.getElementById("kelas-select").value;
+    roomCode = document.getElementById("room-id").value.toUpperCase();
 
-    if (mode === 'single') {
-        document.getElementById("menu").style.display = "none";
-        document.getElementById("quiz-container").classList.remove("hidden");
-        document.getElementById("quiz-container").style.display = "block";
-        loadQuestion();
+    if (!roomCode) return alert("Masukkan Kode Room!");
+
+    document.getElementById("start-screen").classList.add("hide");
+    document.getElementById("game-area").classList.remove("hide");
+    document.getElementById("battle-stats").classList.remove("hide");
+
+    if (isOwner) {
+        role = 'p1';
+        database.ref('rooms/' + roomCode).set({
+            jurusan: selectedJurusan,
+            kelas: selectedKelas,
+            p1: { score: 0 },
+            status: "waiting"
+        });
     } else {
-        document.getElementById("menu").style.display = "none";
-        document.getElementById("lobby").classList.remove("hidden");
-        document.getElementById("lobby").style.display = "block";
+        role = 'p2';
+        database.ref('rooms/' + roomCode).update({
+            p2: { score: 0 },
+            status: "playing"
+        });
     }
+    listenToBattle();
+}
+
+function listenToBattle() {
+    const ref = database.ref('rooms/' + roomCode);
+    ref.on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (data.status === "playing") {
+            selectedJurusan = data.jurusan;
+            selectedKelas = data.kelas;
+            loadQuestion();
+        }
+        if (data.p1) document.getElementById("my-live-score").innerText = role === 'p1' ? data.p1.score : data.p2.score;
+        if (data.p2) document.getElementById("opp-live-score").innerText = role === 'p1' ? data.p2.score : data.p1.score;
+    });
 }
 
 function loadQuestion() {
-    const questions = quizData[selectedJurusan][selectedKelas];
+    const questions = quizData[selectedJurusan] ? quizData[selectedJurusan][selectedKelas] : null;
+    
     if (!questions) {
-        alert("Soal untuk jurusan ini belum tersedia!");
-        restart();
+        alert("Soal untuk jurusan ini sedang dalam pengembangan!");
+        location.reload();
         return;
     }
 
     if (currentQuestionIndex < questions.length) {
         const q = questions[currentQuestionIndex];
         document.getElementById("question-text").innerText = q.q;
-        const optionsDiv = document.getElementById("options");
-        optionsDiv.innerHTML = "";
-        
+        const ansList = document.getElementById("ans-list");
+        ansList.innerHTML = "";
+
         q.a.forEach((opt, i) => {
             const btn = document.createElement("button");
+            btn.className = "btn";
+            btn.style.width = "100%";
+            btn.style.marginBottom = "10px";
             btn.innerText = opt;
-            btn.className = "option-btn";
             btn.onclick = () => checkAnswer(i);
-            optionsDiv.appendChild(btn);
+            ansList.appendChild(btn);
         });
     } else {
         showResult();
@@ -155,67 +181,20 @@ function checkAnswer(idx) {
         score += 10;
     }
     currentQuestionIndex++;
-    loadQuestion();
     
     if (roomCode) {
         database.ref('rooms/' + roomCode + '/' + role).update({ score: score });
     }
+    
+    loadQuestion();
 }
 
 function showResult() {
-    document.getElementById("quiz-container").style.display = "none";
-    document.getElementById("result").classList.remove("hidden");
-    document.getElementById("result").style.display = "block";
-    document.getElementById("final-score").innerText = score;
+    document.getElementById("game-area").classList.add("hide");
+    document.getElementById("result-screen").classList.remove("hide");
+    document.getElementById("total-score").innerText = score;
 }
 
-function restart() {
-    location.reload();
-}
-
-// LOGIKA MULTIPLAYER (SAMA SEPERTI SEBELUMNYA)
-function createRoom() {
-    roomCode = document.getElementById("room-code").value.toUpperCase();
-    if (!roomCode) return alert("Isi kode room!");
-    role = 'p1';
-    let roomRef = database.ref('rooms/' + roomCode);
-    roomRef.set({
-        jurusan: selectedJurusan,
-        kelas: selectedKelas,
-        p1: { score: 0, status: "ready" },
-        status: "waiting"
-    });
-    listenToRoom(roomRef);
-}
-
-function joinRoom() {
-    roomCode = document.getElementById("room-code").value.toUpperCase();
-    if (!roomCode) return alert("Isi kode room!");
-    role = 'p2';
-    let roomRef = database.ref('rooms/' + roomCode);
-    roomRef.once('value', (snapshot) => {
-        if (snapshot.exists()) {
-            roomRef.update({
-                p2: { score: 0, status: "ready" },
-                status: "playing"
-            });
-            listenToRoom(roomRef);
-        } else {
-            alert("Room tidak ditemukan!");
-        }
-    });
-}
-
-function listenToRoom(ref) {
-    ref.on('value', (snapshot) => {
-        const data = snapshot.val();
-        if (data.status === "playing") {
-            selectedJurusan = data.jurusan;
-            selectedKelas = data.kelas;
-            document.getElementById("lobby").style.display = "none";
-            document.getElementById("quiz-container").classList.remove("hidden");
-            document.getElementById("quiz-container").style.display = "block";
-            loadQuestion();
-        }
-    });
+function toggleGuide() {
+    document.getElementById("guide-modal").classList.toggle("hide");
 }
